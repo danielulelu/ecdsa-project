@@ -1,9 +1,19 @@
 import server from "./server";
+import * as secp256k1 from "ethereum-cryptography/secp256k1";
 
-function Wallet({ address, setAddress, balance, setBalance }) {
+function Wallet({
+  address,
+  setAddFress,
+  balance,
+  setBalance,
+  privateKey,
+  setPrivateKey,
+}) {
   async function onChange(evt) {
-    const address = evt.target.value;
-    setAddress(address);
+    const privateKey = evt.target.value;
+    const address = secp256k1.getPublicKey(privateKey);
+    setAddFress(address);
+    setPrivateKey(privateKey);
     if (address) {
       const {
         data: { balance },
@@ -19,8 +29,12 @@ function Wallet({ address, setAddress, balance, setBalance }) {
       <h1>Your Wallet</h1>
 
       <label>
-        Wallet Address
-        <input placeholder="Type an address, for example: 0x1" value={address} onChange={onChange}></input>
+        Private Key{/* never include a private key in a real world project  */}
+        <input
+          placeholder="Type in a private key"
+          value={privateKey}
+          onChange={onChange}
+        ></input>
       </label>
 
       <div className="balance">Balance: {balance}</div>
