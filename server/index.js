@@ -6,10 +6,11 @@ const port = 3042;
 app.use(cors());
 app.use(express.json());
 
+// public keys
 const balances = {
-  "35335e5d5786b9473db3895a480bc7d8ea469a2e": 100,
-  "48942ef85371bd01ed02639011f3cfa72c688073": 50,
-  "81880ab5276baa84df45d949897fa3895e381643": 75,
+  "03ef38b17e7f732415cbae954cc6200c0ef7d367e81c48c4fa21a1a4bea53a5288": 100,
+  "0230bbacca8e039a1508b5f90abf69c9c2eb3bc2c74572745ac358bd5b956ff8d3": 50,
+  "030d8d2b136c5a785c625cb2e926e60ad07c7b37dfd1387052e366b6111d60a7c4": 75,
 };
 
 app.get("/balance/:address", (req, res) => {
@@ -19,6 +20,9 @@ app.get("/balance/:address", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
+  // get signature from the client-side application
+  //recover the public key from the signature
+  //verify the signature with the public key
   const { sender, recipient, amount } = req.body;
 
   setInitialBalance(sender);
