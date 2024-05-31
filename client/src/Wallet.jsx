@@ -40,10 +40,6 @@ function Wallet({
         ></input>
       </label>
 
-      <div>
-        Public Key: {address}
-      </div>
-
       <div className="balance">Balance: {balance}</div>
     </div>
   );

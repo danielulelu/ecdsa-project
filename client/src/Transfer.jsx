@@ -1,7 +1,10 @@
 import { useState } from "react";
 import server from "./server";
+import * as secp from "ethereum-cryptography/secp256k1";
+import { toHex, utf8ToBytes } from "ethereum-cryptography/utils";
+import { Buffer } from "buffer";
 
-function Transfer({ address, setBalance }) {
+function Transfer({ address, privateKey, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
 
@@ -11,16 +14,34 @@ function Transfer({ address, setBalance }) {
     evt.preventDefault();
 
     try {
-      const {
-        data: { balance },
-      } = await server.post(`send`, {
-        sender: address,
-        amount: parseInt(sendAmount),
-        recipient,
-      });
-      setBalance(balance);
-    } catch (ex) {
-      alert(ex.response.data.message);
+      const transaction = { sender: address, recipient, amount: parseInt(sendAmount) };
+      const message = JSON.stringify(transaction);
+      const messageHash = toHex(utf8ToBytes(message));
+
+      const privateKeyBuffer = Buffer.from(privateKey, 'hex');
+      const [signature, recoveryBit] = await secp.secp256k1.sign(messageHash, privateKeyBuffer, { recovered: true });
+
+      const body = {
+        transaction,
+        signature: toHex(signature),
+        recoveryBit,
+      };
+
+      const response = await server.post(`send`, body);
+      if (response && response.data) {
+        const { balance } = response.data;
+        setBalance(balance);
+      } else {
+        console.error("Unexpected response format:", response);
+        alert("An error occurred while processing the transaction.");
+      }
+    } catch (error) {
+      console.error("Error in transfer:", error);
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("An error occurred while processing the transaction.");
+      }
     }
   }
 
@@ -40,7 +61,7 @@ function Transfer({ address, setBalance }) {
       <label>
         Recipient
         <input
-          placeholder="Type an address, for example: 0x2"
+          placeholder="Type in the public key to receive the transaction"
           value={recipient}
           onChange={setValue(setRecipient)}
         ></input>

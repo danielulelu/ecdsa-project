@@ -3,14 +3,16 @@ const app = express();
 const cors = require("cors");
 const port = 3042;
 
+const secp256k1 = require("ethereum-cryptography/secp256k1");
+const { toHex, utf8ToBytes } = require("ethereum-cryptography/utils");
+
 app.use(cors());
 app.use(express.json());
 
-// public keys
 const balances = {
-  "03ef38b17e7f732415cbae954cc6200c0ef7d367e81c48c4fa21a1a4bea53a5288": 100,
-  "0230bbacca8e039a1508b5f90abf69c9c2eb3bc2c74572745ac358bd5b956ff8d3": 50,
-  "030d8d2b136c5a785c625cb2e926e60ad07c7b37dfd1387052e366b6111d60a7c4": 75,
+  "030410aca059e46e9a57f638fab485482b67eae869d7a877421244b6aed1f6bf68": 100,
+  "0260d897e3e8b3319c9ffa60f696abb4f48e8dcd1cc1400a93eeeea0cbbb070df4": 50,
+  "024762cd63bb0911bbc8a62659502206e96e17af0cdfc61d36700da9549869e84a": 75, //2405530b5f176b655a03237dc65f5547aeef8f96a35dc95c56e665f0d0edbcf0
 };
 
 app.get("/balance/:address", (req, res) => {
@@ -19,21 +21,37 @@ app.get("/balance/:address", (req, res) => {
   res.send({ balance });
 });
 
-app.post("/send", (req, res) => {
-  // get signature from the client-side application
-  //recover the public key from the signature
-  //verify the signature with the public key
-  const { sender, recipient, amount } = req.body;
+app.post("/send", async (req, res) => {
+  const { transaction, signature, recoveryBit } = req.body;
+  if (!transaction || !signature || recoveryBit === undefined) {
+    return res.status(400).send({ message: "Invalid transaction data" });
+  }
 
-  setInitialBalance(sender);
-  setInitialBalance(recipient);
+  const { sender, recipient, amount } = transaction;
 
-  if (balances[sender] < amount) {
-    res.status(400).send({ message: "Not enough funds!" });
-  } else {
-    balances[sender] -= amount;
-    balances[recipient] += amount;
-    res.send({ balance: balances[sender] });
+  const message = JSON.stringify(transaction);
+  const messageHash = toHex(utf8ToBytes(message));
+
+  try {
+    const publicKeyRecovered = secp256k1.recoverPublicKey(messageHash, Buffer.from(signature, 'hex'), recoveryBit);
+    const publicKey = toHex(publicKeyRecovered);
+
+    if (publicKey !== sender) {
+      return res.status(400).send({ message: "Invalid signature" });
+    }
+
+    setInitialBalance(sender);
+    setInitialBalance(recipient);
+
+    if (balances[sender] < amount) {
+      res.status(400).send({ message: "Not enough funds!" });
+    } else {
+      balances[sender] -= amount;
+      balances[recipient] += amount;
+      res.send({ balance: balances[sender] });
+    }
+  } catch (error) {
+    return res.status(400).send({ message: "Error processing transaction" });
   }
 });
 
